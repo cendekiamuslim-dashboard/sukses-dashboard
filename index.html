@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Tunas Juara - Math Olympiad</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --primary: #818cf8; 
+            --shadow-light: #ffffff;
+            --shadow-dark: #d1d9e6;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            color: #475569;
+        }
+
+        /* --- CLAYMORPHISM STYLE --- */
+        .clay-card {
+            background-color: var(--bg-color);
+            border-radius: 2rem;
+            box-shadow: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light);
+            border: 2px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .clay-inset {
+            background-color: var(--bg-color);
+            border-radius: 1rem;
+            box-shadow: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
+            border: none;
+        }
+
+        input.clay-inset, textarea.clay-inset, select.clay-inset {
+            width: 100%;
+            padding: 12px 16px;
+            outline: none;
+            color: #475569;
+            font-weight: 700;
+            transition: box-shadow 0.2s;
+            background: transparent;
+        }
+        
+        input.clay-inset:focus, textarea.clay-inset:focus {
+            box-shadow: inset 8px 8px 15px var(--shadow-dark), inset -8px -8px 15px var(--shadow-light);
+        }
+
+        .clay-btn {
+            border-radius: 50px;
+            box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+            transition: all 0.2s ease;
+            border: 2px solid rgba(255,255,255,0.2);
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .clay-btn:active { transform: scale(0.97); box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.9); }
+
+        .btn-primary { background: linear-gradient(145deg, #a5b4fc, #818cf8); color: white; }
+        .btn-success { background: linear-gradient(145deg, #86efac, #4ade80); color: #064e3b; }
+        .btn-danger { background: linear-gradient(145deg, #fca5a5, #f87171); color: white; }
+        .btn-neutral { background: var(--bg-color); color: #64748b; }
+
+        .avatar-frame {
+            border-radius: 50%;
+            border: 5px solid white;
+            box-shadow: 8px 8px 16px var(--shadow-dark), -4px -4px 12px var(--shadow-light);
+            background: white;
+        }
+
+        .modal-overlay { backdrop-filter: blur(8px); background-color: rgba(240, 244, 248, 0.6); }
+        .admin-feature { display: none; }
+        
+        /* Style Khusus Item List Score yang Bisa Diedit */
+        .score-row {
+            display: flex; gap: 10px; align-items: center;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+        .score-row input { font-size: 0.9rem; }
+    </style>
+</head>
+<body class="p-6 md:p-12 min-h-screen relative">
+
+    <div class="absolute top-6 right-6 z-30">
+        <button id="authBtn" onclick="toggleAuth()" class="clay-btn btn-neutral w-10 h-10 flex items-center justify-center rounded-full text-lg shadow-lg" title="Admin Login">
+            🔒
+        </button>
+    </div>
+
+    <header class="max-w-6xl mx-auto mb-14 text-center">
+        <div class="clay-card inline-block px-10 py-5 mb-4 bg-[#e0e7ff]">
+            <h1 class="text-3xl md:text-4xl font-black text-[#4338ca]">🏆 Tunas Juara Math</h1>
+        </div>
+        <p class="text-lg text-[#64748b] font-bold mt-2">Monitoring Peserta & Hasil Ujian Berkala</p>
+        
+        <div id="adminControls" class="mt-8 admin-feature">
+            <button onclick="openForm('add')" class="clay-btn btn-success px-8 py-3 text-sm flex items-center justify-center gap-2 mx-auto tracking-wide">
+                <span>➕</span> TAMBAH PESERTA BARU
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-20" id="studentContainer">
+        </main>
+
+    <div id="adminModeIndicator" class="fixed bottom-4 left-4 hidden z-50">
+        <div class="bg-red-100 text-red-600 px-4 py-2 rounded-full font-bold text-xs shadow-lg border border-red-200 flex items-center gap-2">
+            <span class="animate-pulse">●</span> MODE ADMIN
+        </div>
+    </div>
+
+    <div id="analysisModal" class="fixed inset-0 z-40 hidden flex items-center justify-center modal-overlay">
+        <div class="clay-card w-full max-w-4xl m-4 p-8 relative overflow-y-auto max-h-[90vh]">
+            <button onclick="closeModal('analysisModal')" class="absolute top-6 right-6 clay-btn btn-danger w-10 h-10 flex items-center justify-center font-bold text-lg">✕</button>
+
+            <div class="flex flex-col md:flex-row gap-10">
+                <div class="w-full md:w-1/3 text-center">
+                    <img id="modalImg" src="" class="avatar-frame w-40 h-40 mx-auto mb-6 object-cover">
+                    <h2 id="modalName" class="text-3xl font-black text-slate-700 leading-none"></h2>
+                    <p id="modalClass" class="text-[#818cf8] font-bold text-lg mb-6 mt-2"></p>
+                    <div class="clay-inset p-5 text-left text-sm bg-white/40">
+                        <p class="font-bold text-slate-500 mb-3 text-xs uppercase tracking-wider">🎯 Fokus Bulan Ini</p>
+                        <ul id="modalFocus" class="list-disc ml-5 text-slate-600 font-semibold space-y-1"></ul>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-2/3">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-slate-600 mb-3 flex items-center gap-2">📈 Grafik Perkembangan</h3>
+                        <div class="clay-inset p-4 bg-white/60">
+                            <canvas id="progressChart" height="150"></canvas>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div class="p-5 clay-card bg-[#f0fdf4]">
+                            <h4 class="font-bold text-green-700 text-sm mb-2">✅ Kekuatan</h4>
+                            <p id="modalStrength" class="text-sm text-slate-600 leading-relaxed"></p>
+                        </div>
+                        <div class="p-5 clay-card bg-[#fffbeb]">
+                            <h4 class="font-bold text-yellow-700 text-sm mb-2">⚠️ Perlu Peningkatan</h4>
+                            <p id="modalWeakness" class="text-sm text-slate-600 leading-relaxed"></p>
+                        </div>
+                    </div>
+                    <div class="p-5 clay-card bg-[#eff6ff] border-l-4 border-blue-400">
+                        <h4 class="font-bold text-blue-700 text-sm mb-1">📝 Catatan Pembina</h4>
+                        <p id="modalNote" class="text-sm text-slate-600 italic"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="formModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay">
+        <div class="clay-card w-full max-w-2xl m-4 p-6 md:p-8 relative overflow-y-auto max-h-[95vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="formTitle" class="text-2xl font-black text-[#4338ca]">Edit Data Peserta</h2>
+                <button onclick="closeModal('formModal')" class="text-gray-400 hover:text-red-500 font-bold text-2xl">✕</button>
+            </div>
+
+            <form id="studentForm" onsubmit="saveData(event)" class="space-y-5">
+                <input type="hidden" id="editId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">NAMA LENGKAP</label>
+                        <input type="text" id="inputName" class="clay-inset" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">KELAS</label>
+                        <input type="text" id="inputClass" class="clay-inset" required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">URL FOTO (Opsional)</label>
+                    <input type="text" id="inputAvatar" class="clay-inset" placeholder="Biarkan kosong untuk auto-generate">
+                </div>
+
+                <div class="clay-card p-5 bg-indigo-50 border-none">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="block text-xs font-bold text-indigo-500 uppercase">📊 Riwayat Nilai & Tanggal Tes</label>
+                        <button type="button" onclick="addNewScoreRow()" class="clay-btn btn-success text-xs px-3 py-1 flex items-center gap-1">
+                            <span>+</span> Tambah Tes
+                        </button>
+                    </div>
+
+                    <div id="scoreListContainer" class="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scroll">
+                        </div>
+                    <p class="text-[10px] text-gray-400 mt-2 italic text-center">*Ubah langsung tanggal atau nilai pada kotak di atas</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                     <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">STATUS</label>
+                        <select id="inputStatus" class="clay-inset cursor-pointer bg-transparent">
+                            <option value="Meningkat">🚀 Meningkat Pesat</option>
+                            <option value="Stabil">🛡️ Stabil</option>
+                            <option value="Perlu Perhatian">⚠️ Perlu Perhatian</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">FOKUS MATERI</label>
+                        <input type="text" id="inputFocus" class="clay-inset" placeholder="Pisahkan dengan koma">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">KEKUATAN</label>
+                        <textarea id="inputStrength" rows="2" class="clay-inset"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">KELEMAHAN</label>
+                        <textarea id="inputWeakness" rows="2" class="clay-inset"></textarea>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2 ml-1">CATATAN PEMBINA</label>
+                    <textarea id="inputNote" rows="2" class="clay-inset"></textarea>
+                </div>
+
+                <div class="flex gap-4 mt-8 pt-6 border-t border-slate-200">
+                    <button type="submit" class="clay-btn btn-primary flex-1 py-3 text-lg tracking-wide shadow-lg">💾 SIMPAN SEMUA DATA</button>
+                    <button type="button" id="btnDelete" onclick="deleteStudent()" class="clay-btn btn-danger py-3 px-6 hidden">🗑️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE & LOCAL STORAGE ---
+        let isAdmin = false; 
+        
+        // Data Dummy Default (Hanya dipakai jika LocalStorage kosong)
+        const defaultStudents = [
+            {
+                id: 1,
+                name: "Budi Santoso",
+                class: "Kelas 5 SD",
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi&backgroundColor=c0aede", 
+                status: "Meningkat",
+                history: [
+                    { date: "2025-01-10", score: 65 },
+                    { date: "2025-02-15", score: 78 }
+                ],
+                focus: ["Aljabar Dasar", "Logika Bilangan"],
+                strength: "Sangat cepat dalam berhitung dasar.",
+                weakness: "Kurang teliti soal cerita panjang.",
+                note: "Konsistensi yang luar biasa!"
+            },
+            {
+                id: 2,
+                name: "Siti Aminah",
+                class: "Kelas 4 SD",
+                avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Siti&style=circle&backgroundColor=ffdfbf",
+                status: "Stabil",
+                history: [
+                    { date: "2025-01-10", score: 80 },
+                    { date: "2025-02-15", score: 82 }
+                ],
+                focus: ["Geometri", "Sudut"],
+                strength: "Visualisasi konsep geometri sangat kuat.",
+                weakness: "Kecepatan mengerjakan soal tipe isian.",
+                note: "Bulan depan fokus latihan kecepatan."
+            }
+        ];
+
+        // 1. FUNGSI MUAT DATA (Cek LocalStorage dulu)
+        let students = [];
+        
+        function loadData() {
+            const storedData = localStorage.getItem('tunasJuaraData');
+            if (storedData) {
+                students = JSON.parse(storedData);
+            } else {
+                students = JSON.parse(JSON.stringify(defaultStudents)); // Pakai default jika kosong
+                saveDataToLocal(); // Simpan default ke storage
+            }
+        }
+
+        // 2. FUNGSI SIMPAN DATA (Ke LocalStorage)
+        function saveDataToLocal() {
+            localStorage.setItem('tunasJuaraData', JSON.stringify(students));
+        }
+
+        // --- VARIABEL GLOBAL LAIN ---
+        let tempHistory = [];
+        let myChart = null;
+
+        // --- AUTH SYSTEM ---
+        function toggleAuth() {
+            if (isAdmin) {
+                isAdmin = false;
+                document.getElementById('authBtn').innerHTML = '🔒';
+                document.getElementById('authBtn').className = 'clay-btn btn-neutral w-10 h-10 flex items-center justify-center rounded-full text-lg shadow-lg';
+                document.getElementById('adminControls').style.display = 'none';
+                document.getElementById('adminModeIndicator').classList.add('hidden');
+                Swal.fire({ icon: 'success', title: 'Mode Tamu', showConfirmButton: false, timer: 1000 });
+                renderStudents();
+            } else {
+                Swal.fire({
+                    title: 'Login Admin',
+                    input: 'password',
+                    confirmButtonText: 'Masuk',
+                    confirmButtonColor: '#818cf8',
+                    showCancelButton: true
+                }).then((result) => {
+                    if (result.isConfirmed && result.value === 'admin123') {
+                        isAdmin = true;
+                        document.getElementById('authBtn').innerHTML = '🔓';
+                        document.getElementById('authBtn').className = 'clay-btn btn-danger w-10 h-10 flex items-center justify-center rounded-full text-lg';
+                        document.getElementById('adminControls').style.display = 'block';
+                        document.getElementById('adminModeIndicator').classList.remove('hidden');
+                        Swal.fire({ icon: 'success', title: 'Mode Admin', showConfirmButton: false, timer: 1000 });
+                        renderStudents();
+                    } else if (result.isConfirmed) {
+                        Swal.fire('Gagal', 'Password Salah', 'error');
+                    }
+                });
+            }
+        }
+
+        // --- RENDER HALAMAN ---
+        function renderStudents() {
+            const container = document.getElementById('studentContainer');
+            container.innerHTML = '';
+
+            students.forEach(s => {
+                const sorted = [...s.history].sort((a,b) => new Date(a.date) - new Date(b.date));
+                const lastHistory = sorted.length > 0 ? sorted[sorted.length - 1] : { score: 0, date: '-' };
+                
+                let badgeClass = s.status === "Meningkat" ? "bg-green-100 text-green-700" : 
+                                 s.status === "Perlu Perhatian" ? "bg-yellow-100 text-yellow-800" : "bg-blue-100 text-blue-700";
+                
+                const editBtn = isAdmin ? `<button onclick="openForm('edit', ${s.id})" class="absolute top-5 left-5 clay-btn bg-white w-9 h-9 flex items-center justify-center text-gray-400 hover:text-blue-500 z-10">✏️</button>` : '';
+
+                const card = document.createElement('div');
+                card.className = 'clay-card p-6 flex flex-col items-center text-center relative';
+                card.innerHTML = `
+                    ${editBtn}
+                    <div class="absolute top-5 right-5 px-4 py-1 rounded-full text-xs font-bold shadow-sm ${badgeClass}">
+                        ${s.status}
+                    </div>
+                    <img src="${s.avatar}" class="avatar-frame w-28 h-28 mb-3 object-cover mt-4">
+                    <h3 class="text-xl font-black text-slate-700">${s.name}</h3>
+                    <p class="text-sm text-[#818cf8] font-bold uppercase mb-6">${s.class}</p>
+                    
+                    <div class="w-full clay-inset py-3 px-4 mb-5 flex justify-between items-center bg-white/50">
+                        <div class="text-left">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">Tes Terakhir</p>
+                            <p class="text-xs text-slate-500 font-bold">${formatDate(lastHistory.date)}</p>
+                        </div>
+                        <span class="text-3xl font-black text-[#4338ca]">${lastHistory.score}</span>
+                    </div>
+
+                    <button onclick="showAnalysis(${s.id})" class="clay-btn btn-primary w-full py-3 font-bold text-sm tracking-widest hover:brightness-110">
+                        LIHAT PROGRESS
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- LIST INPUT HANDLING ---
+        function renderScoreInputs() {
+            const container = document.getElementById('scoreListContainer');
+            container.innerHTML = '';
+            if (tempHistory.length === 0) {
+                container.innerHTML = `<p class="text-center text-xs text-gray-400 py-4">Belum ada data nilai</p>`;
+                return;
+            }
+            tempHistory.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'score-row animate-fade-in';
+                row.innerHTML = `
+                    <div class="flex-1">
+                        <input type="date" value="${item.date}" 
+                            onchange="updateTempHistory(${index}, 'date', this.value)"
+                            class="clay-inset text-xs w-full bg-white">
+                    </div>
+                    <div class="w-20">
+                        <input type="number" value="${item.score}" 
+                            onchange="updateTempHistory(${index}, 'score', this.value)"
+                            class="clay-inset text-xs w-full bg-white text-center" placeholder="Nilai">
+                    </div>
+                    <button type="button" onclick="removeScoreRow(${index})" class="text-red-400 hover:text-red-600 font-bold px-2 text-xl">×</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function updateTempHistory(index, field, value) {
+            if (field === 'score') tempHistory[index][field] = parseInt(value) || 0;
+            else tempHistory[index][field] = value;
+        }
+
+        function addNewScoreRow() {
+            const today = new Date().toISOString().split('T')[0];
+            tempHistory.push({ date: today, score: 0 });
+            renderScoreInputs();
+            const container = document.getElementById('scoreListContainer');
+            setTimeout(() => container.scrollTop = container.scrollHeight, 100);
+        }
+
+        function removeScoreRow(index) {
+            tempHistory.splice(index, 1);
+            renderScoreInputs();
+        }
+
+        // --- FORM HANDLING ---
+        function openForm(mode, id = null) {
+            const modal = document.getElementById('formModal');
+            const form = document.getElementById('studentForm');
+            modal.classList.remove('hidden');
+
+            if (mode === 'add') {
+                document.getElementById('formTitle').innerText = "➕ Tambah Peserta";
+                document.getElementById('btnDelete').classList.add('hidden');
+                form.reset();
+                document.getElementById('editId').value = '';
+                tempHistory = [];
+                addNewScoreRow();
+            } else {
+                document.getElementById('formTitle').innerText = "✏️ Edit Peserta";
+                document.getElementById('btnDelete').classList.remove('hidden');
+                
+                const s = students.find(item => item.id === id);
+                document.getElementById('editId').value = s.id;
+                document.getElementById('inputName').value = s.name;
+                document.getElementById('inputClass').value = s.class;
+                document.getElementById('inputAvatar').value = s.avatar;
+                document.getElementById('inputStatus').value = s.status;
+                document.getElementById('inputFocus').value = s.focus.join(', ');
+                document.getElementById('inputStrength').value = s.strength;
+                document.getElementById('inputWeakness').value = s.weakness;
+                document.getElementById('inputNote').value = s.note;
+
+                tempHistory = JSON.parse(JSON.stringify(s.history));
+                renderScoreInputs();
+            }
+        }
+
+        function saveData(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const name = document.getElementById('inputName').value;
+            const kelas = document.getElementById('inputClass').value;
+            let avatar = document.getElementById('inputAvatar').value;
+            const status = document.getElementById('inputStatus').value;
+            const focus = document.getElementById('inputFocus').value.split(',').map(t => t.trim());
+            const strength = document.getElementById('inputStrength').value;
+            const weakness = document.getElementById('inputWeakness').value;
+            const note = document.getElementById('inputNote').value;
+
+            if(!avatar) avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}&backgroundColor=c0aede`;
+
+            if(tempHistory.length === 0) {
+                Swal.fire('Peringatan', 'Minimal harus ada 1 nilai ujian.', 'warning');
+                return;
+            }
+
+            tempHistory.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+            const newData = { 
+                id: id ? parseInt(id) : (students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1), 
+                name, class: kelas, avatar, status, 
+                history: tempHistory, 
+                focus, strength, weakness, note 
+            };
+
+            if (id) {
+                const index = students.findIndex(s => s.id == id);
+                students[index] = newData;
+            } else {
+                students.push(newData);
+            }
+
+            // SIMPAN PERMANEN
+            saveDataToLocal();
+
+            Swal.fire({ icon: 'success', title: 'Data Tersimpan!', timer: 1000, showConfirmButton: false });
+            renderStudents();
+            closeModal('formModal');
+        }
+
+        function deleteStudent() {
+            const id = document.getElementById('editId').value;
+            Swal.fire({
+                title: 'Hapus Peserta?', text: "Data hilang permanen!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Ya, Hapus!'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    students = students.filter(s => s.id != id);
+                    
+                    // SIMPAN PERMANEN SETELAH HAPUS
+                    saveDataToLocal();
+
+                    renderStudents();
+                    closeModal('formModal');
+                    Swal.fire('Terhapus', '', 'success');
+                }
+            });
+        }
+
+        // --- CHART & VIEW ---
+        function showAnalysis(id) {
+            const s = students.find(item => item.id === id);
+            document.getElementById('analysisModal').classList.remove('hidden');
+            
+            document.getElementById('modalImg').src = s.avatar;
+            document.getElementById('modalName').innerText = s.name;
+            document.getElementById('modalClass').innerText = s.class;
+            document.getElementById('modalFocus').innerHTML = s.focus.map(f => `<li>${f}</li>`).join('');
+            document.getElementById('modalStrength').innerText = s.strength;
+            document.getElementById('modalWeakness').innerText = s.weakness;
+            document.getElementById('modalNote').innerText = `"${s.note}"`;
+
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            if (myChart) myChart.destroy();
+
+            const sortedHistory = [...s.history].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const labels = sortedHistory.map(h => formatDate(h.date));
+            const dataScores = sortedHistory.map(h => h.score);
+
+            let gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(129, 140, 248, 0.5)');
+            gradient.addColorStop(1, 'rgba(129, 140, 248, 0.0)');
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Nilai Ujian',
+                        data: dataScores,
+                        borderColor: '#6366f1',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#6366f1',
+                        pointRadius: 6,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 100, grid: { borderDash: [5, 5] } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function formatDate(dateString) {
+            if(!dateString || dateString === '-') return '-';
+            const options = { day: 'numeric', month: 'short' };
+            try { return new Date(dateString).toLocaleDateString('id-ID', options); } 
+            catch (e) { return dateString; }
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // --- INITIALIZE ---
+        // Panggil fungsi loadData() saat website pertama kali dibuka
+        loadData();
+        renderStudents();
+
+    </script>
+</body>
+</html>
